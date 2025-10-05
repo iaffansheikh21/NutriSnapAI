@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 })
     }
 
-    const webhookUrl = process.env.WEBHOOK_URL || "http://localhost:5678/webhook-test/meal-ai"
+    const webhookUrl = process.env.WEBHOOK_URL || "https://boyish-pseudointellectually-birgit.ngrok-free.dev/webhook-test/meal-ai"
     console.log("[v0] Sending image to webhook:", webhookUrl)
     console.log("[v0] Image details:", { name: image.name, type: image.type, size: image.size })
 

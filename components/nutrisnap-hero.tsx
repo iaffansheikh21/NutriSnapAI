@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -23,7 +21,7 @@ interface NutritionData {
   fat: number
   calories: number
   foodItems: FoodItem[]
-  error?: string // Optional error property
+  error?: string
 }
 
 export function NutriSnapHero() {
@@ -33,6 +31,7 @@ export function NutriSnapHero() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
+  // 🔹 Common function to handle image file
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -44,61 +43,60 @@ export function NutriSnapHero() {
     }
     reader.readAsDataURL(file)
   }
-const analyzeImage = async (file: File) => {
-  setIsAnalyzing(true)
-  setNutritionData(null)
 
-  try {
-    const formData = new FormData()
-    formData.append("image", file)
+  // 🔹 Core logic to analyze image through your API
+  const analyzeImage = async (file: File) => {
+    setIsAnalyzing(true)
+    setNutritionData(null)
 
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      body: formData,
-    })
+    try {
+      const formData = new FormData()
+      formData.append("image", file)
 
-    if (!response.ok) {
-      throw new Error("Failed to analyze image")
-    }
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        body: formData,
+      })
 
-    const json = await response.json()
-    console.log("🔍 Agent response:", json)
+      if (!response.ok) throw new Error("Failed to analyze image")
 
-    // ✅ Handle the correct response format from your backend
-    if (json?.output?.status === "success") {
-      const formatted = {
-        calories: json.output.total.calories,
-        protein: json.output.total.protein,
-        carbs: json.output.total.carbs,
-        fat: json.output.total.fat,
-        foodItems: json.output.food || [],
+      const json = await response.json()
+      console.log("🔍 Agent response:", json)
+
+      if (json?.output?.status === "success") {
+        const formatted = {
+          calories: json.output.total.calories,
+          protein: json.output.total.protein,
+          carbs: json.output.total.carbs,
+          fat: json.output.total.fat,
+          foodItems: json.output.food || [],
+        }
+
+        console.log("✅ Formatted nutrition data:", formatted)
+        setNutritionData(formatted)
+      } else if (json?.code === 404) {
+        alert("⚠️ Webhook not active. Please click 'Execute Workflow' in n8n or activate your workflow.")
+        setNutritionData(null)
+      } else {
+        console.error("❌ Unexpected response format:", json)
+        throw new Error("Invalid agent response format")
       }
-
-      console.log("✅ Formatted nutrition data:", formatted)
-      setNutritionData(formatted)
-    } else if (json?.code === 404) {
-      alert("⚠️ Webhook not active. Please click 'Execute Workflow' in n8n or activate your workflow.")
-      setNutritionData(null)
-    } else {
-      console.error("❌ Unexpected response format:", json)
-      throw new Error("Invalid agent response format")
+    } catch (error) {
+      console.error("Error analyzing image:", error)
+      setNutritionData({
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        calories: 0,
+        foodItems: [],
+        error: "Analysis failed. Check console for details.",
+      })
+    } finally {
+      setIsAnalyzing(false)
     }
-  } catch (error) {
-    console.error("Error analyzing image:", error)
-    setNutritionData({
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      calories: 0,
-      foodItems: [],
-      error: "Analysis failed. Check console for details.",
-    })
-  } finally {
-    setIsAnalyzing(false)
   }
-}
 
-
+  // 🔹 Reset for another image
   const handleReset = () => {
     setSelectedImage(null)
     setNutritionData(null)
@@ -119,7 +117,6 @@ const analyzeImage = async (file: File) => {
         </div>
       )}
 
-      {/* Content */}
       <div className="relative z-20">
         <header className="border-b border-border/40 backdrop-blur-md bg-background/50">
           <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
@@ -151,14 +148,17 @@ const analyzeImage = async (file: File) => {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4 sm:pt-6">
+                  {/* 🔹 Upload button */}
                   <Button
                     size="lg"
-                    className="gap-3 text-lg font-bold h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 hover:scale-105 w-full sm:w-auto"
+                    className="gap-3 text-lg font-bold h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg transition-all hover:scale-105 w-full sm:w-auto"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Upload className="h-6 w-6" />
                     Analyze My Meal
                   </Button>
+
+                  {/* 🔹 Camera button (open device camera) */}
                   <Button
                     size="lg"
                     variant="outline"
@@ -170,74 +170,28 @@ const analyzeImage = async (file: File) => {
                   </Button>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-6 pt-8 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" />
-                    <span>Instant Results</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    <span>95% Accuracy</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" />
-                    <span>Privacy First</span>
-                  </div>
-                </div>
-              </div>
+                {/* Hidden file inputs */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  title="Upload an image file"
+                />
 
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} title="Upload an image file" />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileSelect}
-                title="Take a photo"
-              />
-
-              <div className="max-w-5xl mx-auto mt-16 sm:mt-24 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                      <Sparkles className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-lg">AI-Powered</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Advanced computer vision analyzes your meals with 95% accuracy
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                      <Zap className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-lg">Instant Results</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Get detailed nutrition breakdown in seconds, not minutes
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 bg-card/50 backdrop-blur-sm border-border/50 hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/5 group">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
-                      <Camera className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-lg">Easy to Use</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        Simply snap or upload a photo - no manual entry required
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+                {/* 📸 This input opens camera directly */}
+                <label htmlFor="cameraInput" className="sr-only">
+                  Take a photo
+                </label>
+                <input
+                  id="cameraInput"
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
               </div>
             </div>
           ) : (
@@ -254,12 +208,7 @@ const analyzeImage = async (file: File) => {
 
                   {isAnalyzing && (
                     <div className="flex flex-col items-center justify-center gap-4 py-12">
-                      <div className="relative">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                        <div className="absolute inset-0 h-12 w-12 animate-ping text-primary/20">
-                          <Loader2 className="h-12 w-12" />
-                        </div>
-                      </div>
+                      <Loader2 className="h-12 w-12 animate-spin text-primary" />
                       <div className="text-center space-y-2">
                         <p className="text-xl font-bold">Analyzing your meal...</p>
                         <p className="text-sm text-muted-foreground">This will only take a moment</p>

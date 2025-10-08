@@ -7,9 +7,8 @@ import "./globals.css"
 import { Suspense } from "react"
 
 export const metadata: Metadata = {
-  title: "NutriSnap AI - Instant Meal Nutrition Analysis",
-  description: "Upload a meal photo and get instant macronutrient analytics powered by AI",
-  generator: "v0.app",
+  title: "NutriSnap AI",
+  description: "AI-powered nutrition analysis from meal photos. Snap, analyze, and track your macros in seconds.",
 }
 
 export default function RootLayout({

@@ -23,6 +23,7 @@ interface NutritionData {
   fat: number
   calories: number
   foodItems: FoodItem[]
+  error?: string // Optional error property
 }
 
 export function NutriSnapHero() {
@@ -43,64 +44,60 @@ export function NutriSnapHero() {
     }
     reader.readAsDataURL(file)
   }
+const analyzeImage = async (file: File) => {
+  setIsAnalyzing(true)
+  setNutritionData(null)
 
-  const analyzeImage = async (file: File) => {
-    setIsAnalyzing(true)
-    setNutritionData(null)
+  try {
+    const formData = new FormData()
+    formData.append("image", file)
 
-    try {
-      const formData = new FormData()
-      formData.append("image", file)
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      body: formData,
+    })
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        body: formData,
-      })
+    if (!response.ok) {
+      throw new Error("Failed to analyze image")
+    }
 
-      if (!response.ok) {
-        throw new Error("Analysis failed")
+    const json = await response.json()
+    console.log("🔍 Agent response:", json)
+
+    // ✅ Handle the correct response format from your backend
+    if (json?.output?.status === "success") {
+      const formatted = {
+        calories: json.output.total.calories,
+        protein: json.output.total.protein,
+        carbs: json.output.total.carbs,
+        fat: json.output.total.fat,
+        foodItems: json.output.food || [],
       }
 
-      const data = await response.json()
-      setNutritionData(data)
-    } catch (error) {
-      console.error("[v0] Error analyzing image:", error)
-      setNutritionData({
-        protein: 51.2,
-        carbs: 54,
-        fat: 6.7,
-        calories: 467,
-        foodItems: [
-          {
-            name: "Grilled Chicken Breast",
-            quantity: "150g",
-            calories: 248,
-            protein: 46,
-            carbs: 0,
-            fat: 5.3,
-          },
-          {
-            name: "Brown Rice",
-            quantity: "100g",
-            calories: 112,
-            protein: 2.6,
-            carbs: 24,
-            fat: 0.9,
-          },
-          {
-            name: "Mixed Vegetables",
-            quantity: "150g",
-            calories: 107,
-            protein: 2.6,
-            carbs: 30,
-            fat: 0.5,
-          },
-        ],
-      })
-    } finally {
-      setIsAnalyzing(false)
+      console.log("✅ Formatted nutrition data:", formatted)
+      setNutritionData(formatted)
+    } else if (json?.code === 404) {
+      alert("⚠️ Webhook not active. Please click 'Execute Workflow' in n8n or activate your workflow.")
+      setNutritionData(null)
+    } else {
+      console.error("❌ Unexpected response format:", json)
+      throw new Error("Invalid agent response format")
     }
+  } catch (error) {
+    console.error("Error analyzing image:", error)
+    setNutritionData({
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      calories: 0,
+      foodItems: [],
+      error: "Analysis failed. Check console for details.",
+    })
+  } finally {
+    setIsAnalyzing(false)
   }
+}
+
 
   const handleReset = () => {
     setSelectedImage(null)
@@ -189,14 +186,14 @@ export function NutriSnapHero() {
                 </div>
               </div>
 
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} title="Upload an image file" />
               <input
                 ref={cameraInputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handleFileSelect}
+                title="Take a photo"
               />
 
               <div className="max-w-5xl mx-auto mt-16 sm:mt-24 grid grid-cols-1 md:grid-cols-3 gap-6">
